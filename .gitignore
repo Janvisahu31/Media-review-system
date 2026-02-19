@@ -25,3 +25,8 @@ dump.rdb
 # Logs
 *.log
 logs/
+
+venv/
+__pycache__/
+*.pyc
+media.db
