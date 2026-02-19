@@ -4,6 +4,7 @@ from sqlalchemy import func
 import threading
 import csv
 import time
+from cache.redis_client import get_cache, set_cache, delete_cache, TTL_TOP_RATED
 
 db_lock = threading.Lock()
 
@@ -48,6 +49,10 @@ def submit_review(user_id: int, media_id: int, rating: float, comment: str):
         db.commit()
         db.refresh(review)
         print(f"✅ Review submitted for '{media.title}' by {user.name} | Rating: {rating}/10")
+
+        # Invalidate top-rated cache since ratings changed
+        delete_cache("top_rated:5")
+
         return review
 
     except Exception as e:
@@ -186,7 +191,20 @@ def bulk_submit_reviews(file_path: str, user_id: int):
 
 
 def get_top_rated(limit: int = 5):
-    """Get top rated media based on average review ratings."""
+    """Get top rated media — cached in Redis."""
+    cache_key = f"top_rated:{limit}"
+
+    # ── Check cache first ─────────────────────
+    cached = get_cache(cache_key)
+    if cached:
+        print(f"\n⚡ Loaded from cache!\n")
+        print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Avg Rating':<12} {'Reviews'}")
+        print("-" * 65)
+        for r in cached:
+            print(f"{r['id']:<5} {r['title']:<30} {r['media_type']:<10} "
+                  f"{r['avg_rating']:<12} {r['review_count']}")
+        return cached
+     # ── Cache miss — query database ───────────
     db = SessionLocal()
     try:
         results = (
@@ -210,13 +228,29 @@ def get_top_rated(limit: int = 5):
             print("❌ No reviews found yet.")
             return []
 
+        # ── Format for display and cache ──────
+        formatted = [
+            {
+                "id":           r.id,
+                "title":        r.title,
+                "media_type":   r.media_type.value,
+                "genre":        r.genre,
+                "avg_rating":   round(r.avg_rating, 2),
+                "review_count": r.review_count
+            }
+            for r in results
+        ]
+
+         # ── Store in Redis ─────────────────────
+        set_cache(cache_key, formatted, TTL_TOP_RATED)
+
         print(f"\n⭐ Top {limit} Rated Media:\n")
         print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Avg Rating':<12} {'Reviews'}")
         print("-" * 65)
-        for r in results:
-            print(f"{r.id:<5} {r.title:<30} {r.media_type.value:<10} "
-                  f"{round(r.avg_rating, 2):<12} {r.review_count}")
-        return results
+        for r in formatted:
+            print(f"{r['id']:<5} {r['title']:<30} {r['media_type']:<10} "
+                  f"{r['avg_rating']:<12} {r['review_count']}")
+        return formatted
 
     finally:
         db.close()

@@ -1,6 +1,7 @@
 from database.db import SessionLocal
 from database.models import Media, MediaType
 from patterns.factory import MediaFactory
+from cache.redis_client import get_cache, set_cache, TTL_SEARCH
 
 
 def add_media(title: str, media_type: str, genre: str, release_year: int, creator: str):
@@ -62,21 +63,52 @@ def get_all_media():
 
 
 def search_by_title(title: str):
-    """Search media by title (partial match)."""
+    """Search media by title — cached in Redis."""
+    cache_key = f"search:{title.lower()}"
+
+    # ── Check cache first ─────────────────────
+    cached = get_cache(cache_key)
+    if cached:
+        print(f"\n⚡ Loaded from cache!\n")
+        print(f"🔍 Results for '{title}':\n")
+        print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Genre':<15} {'Year':<6} {'Creator'}")
+        print("-" * 75)
+        for m in cached:
+            print(f"{m['id']:<5} {m['title']:<30} {m['media_type']:<10} "
+                  f"{m['genre']:<15} {m['release_year']:<6} {m['creator']}")
+        return cached
+
+    # ── Cache miss — query database ───────────
     db = SessionLocal()
     try:
         results = db.query(Media).filter(Media.title.ilike(f"%{title}%")).all()
+
         if not results:
-            print(f" No media found matching '{title}'")
+            print(f"❌ No media found matching '{title}'")
             return []
 
-        print(f"\n🔍 Results for '{title}':")
-        print(f"\n{'ID':<5} {'Title':<30} {'Type':<10} {'Genre':<15} {'Year':<6} {'Creator'}")
+        formatted = [
+            {
+                "id":           m.id,
+                "title":        m.title,
+                "media_type":   m.media_type.value,
+                "genre":        m.genre or "N/A",
+                "release_year": m.release_year or "N/A",
+                "creator":      m.creator or "N/A"
+            }
+            for m in results
+        ]
+
+        # ── Store in Redis ─────────────────────
+        set_cache(cache_key, formatted, TTL_SEARCH)
+
+        print(f"\n🔍 Results for '{title}':\n")
+        print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Genre':<15} {'Year':<6} {'Creator'}")
         print("-" * 75)
-        for m in results:
-            print(f"{m.id:<5} {m.title:<30} {m.media_type.value:<10} "
-                  f"{m.genre or 'N/A':<15} {m.release_year or 'N/A':<6} {m.creator or 'N/A'}")
-        return results
+        for m in formatted:
+            print(f"{m['id']:<5} {m['title']:<30} {m['media_type']:<10} "
+                  f"{m['genre']:<15} {m['release_year']:<6} {m['creator']}")
+        return formatted
 
     finally:
         db.close()
