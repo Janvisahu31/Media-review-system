@@ -42,7 +42,10 @@ def submit_review(user_id: int, media_id: int, rating: float, comment: str):
         db.add(review)
         db.commit()
         db.refresh(review)
-        print(f"✅ Review submitted for '{media.title}' by {user.name} | Rating: {rating}/10")
+        print(f"Review submitted for '{media.title}' by {user.name} | Rating: {rating}/10")
+
+        notify_on_new_review(media_id, user_id, rating, comment)
+        
         return review
 
     except Exception as e:
