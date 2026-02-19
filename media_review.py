@@ -1,7 +1,7 @@
 import argparse
 from database.db import initialize_db
 from services.media_service import get_all_media, search_by_title
-from services.review_service import submit_review, get_top_rated, get_recommendations
+from services.review_service import submit_review, get_top_rated, get_recommendations, bulk_submit_reviews
 from patterns.observer import add_favorite, get_notifications
 from utils.auth import login, logout, get_current_user, login_required
 
@@ -35,7 +35,7 @@ def handle_review(args, user):
 
 @login_required
 def handle_bulk_review(args, user):
-    print(f"📂 Bulk review from '{args.bulk_review}' — coming soon!")
+    bulk_submit_reviews(args.bulk_review, user["user_id"])
 
 
 @login_required
