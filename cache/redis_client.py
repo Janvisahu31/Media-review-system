@@ -28,7 +28,7 @@ except Exception:
 TTL_TOP_RATED = 300   # 5 minutes
 TTL_SEARCH    = 120   # 2 minutes
 TTL_REVIEWS   = 60    # 1 minute
-
+TTL_RECOMMENDATIONS = 180   # 3 minutes
 
 # ──────────────────────────────────────────────
 # Core helpers

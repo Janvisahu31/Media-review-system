@@ -4,7 +4,9 @@ from sqlalchemy import func
 import threading
 import csv
 import time
-from cache.redis_client import get_cache, set_cache, delete_cache, TTL_TOP_RATED
+from cache.redis_client import get_cache, set_cache, delete_cache, TTL_TOP_RATED, TTL_RECOMMENDATIONS
+
+TTL_RECOMMENDATIONS = 180  # 3 minutes
 
 db_lock = threading.Lock()
 
@@ -52,6 +54,7 @@ def submit_review(user_id: int, media_id: int, rating: float, comment: str):
 
         # Invalidate top-rated cache since ratings changed
         delete_cache("top_rated:5")
+        delete_cache(f"recommendations:{user_id}") 
 
         return review
 
@@ -258,6 +261,18 @@ def get_top_rated(limit: int = 5):
 
 def get_recommendations(user_id: int):
     """Recommend media based on genres user rated >= 7.0."""
+    cache_key = f"recommendations:{user_id}"
+    cached = get_cache(cache_key)
+    if cached:
+        print(f"\n⚡ Loaded from cache!\n")
+        print(f"💡 Recommendations (based on your top-rated genres):\n")
+        print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Genre':<15} {'Creator'}")
+        print("-" * 70)
+        for m in cached:
+            print(f"{m['id']:<5} {m['title']:<30} {m['media_type']:<10} "
+                  f"{m['genre']:<15} {m['creator']}")
+        return cached
+
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == user_id).first()
@@ -298,6 +313,20 @@ def get_recommendations(user_id: int):
         if not recommendations:
             print("❌ No new recommendations found. Try reviewing more media!")
             return []
+        
+        formatted = [
+            {
+                "id":         m.id,
+                "title":      m.title,
+                "media_type": m.media_type.value,
+                "genre":      m.genre or "N/A",
+                "creator":    m.creator or "N/A"
+            }
+            for m in recommendations
+        ]
+
+        # ── Store in Redis ─────────────────────
+        set_cache(cache_key, formatted, TTL_RECOMMENDATIONS)
 
         print(f"\n💡 Recommendations for {user.name} (based on your top-rated genres):\n")
         print(f"{'ID':<5} {'Title':<30} {'Type':<10} {'Genre':<15} {'Creator'}")
