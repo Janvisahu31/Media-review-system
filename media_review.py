@@ -75,6 +75,35 @@ def handle_whoami(args):
     else:
         print("❌ Not logged in.")
         print("   Run: python media_review.py --login <email> <password>")
+    
+def handle_sessions(args):
+    import glob
+    import json
+    import platform
+
+    session_files = glob.glob(".session_*.json")
+
+    if not session_files:
+        print("❌ No active sessions found.")
+        return
+
+    print(f"\n{'─'*55}")
+    print(f"  Active Sessions ({len(session_files)} terminal(s))")
+    print(f"{'─'*55}")
+    print(f"{'Terminal ID':<15} {'User':<15} {'Email':<25}")
+    print(f"{'─'*55}")
+
+    for session_file in session_files:
+        try:
+            with open(session_file, "r") as f:
+                data = json.load(f)
+            terminal_id = session_file.replace(".session_", "").replace(".json", "")
+            current     = "← YOU" if terminal_id == os.environ.get("MEDIA_TERMINAL_ID", "") else ""
+            print(f"{terminal_id:<15} {data.get('name','?'):<15} {data.get('email','?'):<25} {current}")
+        except Exception:
+            print(f"  {session_file} — unreadable")
+
+    print(f"{'─'*55}\n")
 
 
 def main():
@@ -101,6 +130,7 @@ def main():
                         help="Favorite a media item (must be logged in)")
     parser.add_argument("--notification", action="store_true",
                         help="Check notifications (must be logged in)")
+    parser.add_argument("--sessions", action="store_true", help="List all active terminal sessions")
     
 
     parser.add_argument(
@@ -155,9 +185,17 @@ def main():
 
     elif args.change_password:
         handle_change_password(args)
+    elif args.sessions:
+        handle_sessions(args)
+        
     else:
         parser.print_help()
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
+

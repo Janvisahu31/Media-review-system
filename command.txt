@@ -1,0 +1,54 @@
+# Activate Virtual Environment
+
+venv\Scripts\activate
+source venv/Scripts/activate
+
+
+# Start Redis (Docker)
+
+docker run -d --name redis-server -p 6379:6379 redis
+docker exec -it redis-server redis-cli ping
+
+
+# Set Terminal ID (Required for multi-user sessions)
+
+# PowerShell
+$env:MEDIA_TERMINAL_ID = $PID
+
+# Git Bash
+export MEDIA_TERMINAL_ID=$$
+
+
+# Public Commands
+
+python media_review.py --list
+python media_review.py --search "Inception"
+python media_review.py --top-rated
+
+python media_review.py --register "Alice" alice@example.com pass123
+python media_review.py --login alice@example.com pass123
+python media_review.py --whoami
+
+
+# Authenticated Commands
+
+python media_review.py --logout
+python media_review.py --change-password oldpass newpass
+
+python media_review.py --review 1 9.0 "Great movie"
+python media_review.py --bulk-review reviews.csv
+python media_review.py --recommend
+python media_review.py --favorite 1
+python media_review.py --notification
+
+
+# Seed Data
+
+python seed_data.py
+
+
+# Run Tests
+
+pytest tests/ -v
+pytest --cov=services --cov=patterns --cov=utils --cov=database --cov-report=term-missing
+pytest tests/test_auth.py -v
