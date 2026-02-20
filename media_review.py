@@ -3,7 +3,7 @@ from database.db import initialize_db
 from services.media_service import get_all_media, search_by_title
 from services.review_service import submit_review, get_top_rated, get_recommendations, bulk_submit_reviews
 from patterns.observer import add_favorite, get_notifications
-from utils.auth import login, logout, get_current_user, login_required
+from utils.auth import login, logout, get_current_user, login_required, register, change_password, cleanup_sessions
 
 
 
@@ -50,8 +50,31 @@ def handle_favorite(args, user):
 
 @login_required
 def handle_notification(args, user):
-    get_notifications(user["user_id"])
+    last_seen = user.get("last_seen")
+    if not last_seen:
+        print("❌ Session missing last_seen. Please login again.")
+        return
+    get_notifications(user["user_id"],last_seen)
 
+def handle_register(args):
+    name, email, password = args.register
+    register(name, email, password)
+
+@login_required
+def handle_change_password(args, user):
+    old_password, new_password = args.change_password
+    change_password(user["user_id"], old_password, new_password)
+
+
+def handle_whoami(args):
+    user = get_current_user()
+    if user:
+        print(f"\n👤 Logged in as: {user['name']}")
+        print(f"   Email       : {user['email']}")
+        print(f"   User ID     : {user['user_id']}")
+    else:
+        print("❌ Not logged in.")
+        print("   Run: python media_review.py --login <email> <password>")
 
 
 def main():
@@ -78,9 +101,30 @@ def main():
                         help="Favorite a media item (must be logged in)")
     parser.add_argument("--notification", action="store_true",
                         help="Check notifications (must be logged in)")
+    
+
+    parser.add_argument(
+    "--register",
+    nargs=3,
+    metavar=("NAME", "EMAIL", "PASSWORD"),
+    help="Register a new account"
+    )
+
+    parser.add_argument(
+        "--change-password",
+        nargs=2,
+        metavar=("OLD_PASSWORD", "NEW_PASSWORD"),
+        help="Change your password (must be logged in)"
+    )
+    parser.add_argument(
+        "--whoami",
+        action="store_true",
+        help="Show currently logged in user"
+    )
 
     args = parser.parse_args()
     initialize_db()
+    cleanup_sessions()
 
     if args.list:
         handle_list(args)
@@ -102,6 +146,15 @@ def main():
         handle_favorite(args)
     elif args.notification:
         handle_notification(args)
+
+    elif args.register:
+        handle_register(args)
+
+    elif args.whoami:
+        handle_whoami(args)
+
+    elif args.change_password:
+        handle_change_password(args)
     else:
         parser.print_help()
 

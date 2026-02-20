@@ -1,6 +1,7 @@
 from database.db import SessionLocal
 from database.models import Favorite, Review, Media, User
-
+from utils.auth import update_last_seen
+from datetime import datetime
 
 class Observer:
     def notify(self, media_title: str, reviewer_name: str, rating: float, comment: str):
@@ -69,11 +70,10 @@ def add_favorite(user_id: int, media_id: int):
         db.close()
 
 
-def get_notifications(logged_in_user_id: int):
+def get_notifications(logged_in_user_id: int, last_seen:str):
     """
-    Show notifications for the logged in user only.
-    Finds all media they favorited and shows
-    latest reviews on those media items.
+    Show only NEW notifications since last_seen timestamp.
+    After showing, update last_seen so they won't show again.
     """
     db = SessionLocal()
     try:
@@ -82,6 +82,9 @@ def get_notifications(logged_in_user_id: int):
         if not user:
             print("❌ User not found.")
             return
+        
+        # Parse last_seen timestamp
+        last_seen_dt = datetime.fromisoformat(last_seen)
 
         # Find all media this user has favorited
         favorites = db.query(Favorite).filter(
@@ -103,18 +106,20 @@ def get_notifications(logged_in_user_id: int):
                 continue
 
             # Get latest reviews on this media (excluding user's own reviews)
-            reviews = (
+            new_reviews = (
                 db.query(Review)
                 .filter(
                     Review.media_id == fav.media_id,
-                    Review.user_id != logged_in_user_id   # exclude own reviews
+                    Review.user_id != logged_in_user_id,
+                    Review.created_at > last_seen_dt  
+                    # exclude own reviews
                 )
                 .order_by(Review.created_at.desc())
                 .limit(3)
                 .all()
             )
 
-            if not reviews:
+            if not new_reviews:
                 continue
 
             found_any = True
@@ -123,7 +128,7 @@ def get_notifications(logged_in_user_id: int):
             subject = ReviewSubject()
             subject.attach(UserObserver(user.name))
 
-            for review in reviews:
+            for review in new_reviews:
                 reviewer = db.query(User).filter(User.id == review.user_id).first()
                 subject.notify_all(
                     media_title=media.title,
@@ -134,6 +139,9 @@ def get_notifications(logged_in_user_id: int):
 
         if not found_any:
             print(" You're all caught up! No new reviews on your favorites.")
+
+        update_last_seen()
+        print(f"\n📅 Last checked: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
     finally:
         db.close()

@@ -1,5 +1,6 @@
 from database.db import SessionLocal
 from database.models import User
+from utils.auth import hash_password
 
 
 def add_user(name: str, email: str, password: str):
@@ -11,8 +12,9 @@ def add_user(name: str, email: str, password: str):
         if existing:
             print(f"❌ User with email '{email}' already exists.")
             return None
-
-        user = User(name=name, email=email, password=password)
+        
+        hashed = hash_password(password)
+        user = User(name=name, email=email, password=hashed)
         db.add(user)
         db.commit()
         db.refresh(user)

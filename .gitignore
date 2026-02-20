@@ -30,3 +30,6 @@ venv/
 __pycache__/
 *.pyc
 media.db
+
+# Session files (one per terminal)
+.session_*.json
