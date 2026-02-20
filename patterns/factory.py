@@ -78,7 +78,7 @@ class Song(BaseMedia):
 
     def get_details(self):
         return (
-            f"🎵 Song      : {self.title}\n"
+            f" Song      : {self.title}\n"
             f"   Artist    : {self.creator}\n"
             f"   Genre     : {self.genre}\n"
             f"   Released  : {self.release_year}"

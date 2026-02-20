@@ -1,0 +1,5 @@
+sqlalchemy==2.0.36
+bcrypt==4.2.1
+redis==5.2.1
+pytest==9.0.2
+pytest-cov==6.0.0

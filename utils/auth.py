@@ -3,7 +3,7 @@ import os
 import bcrypt
 from database.db import SessionLocal
 from database.models import User
-from datetime import datetime
+from datetime import datetime, timezone
 import glob
 import platform
 
@@ -87,7 +87,7 @@ def login(email: str, password: str):
             "user_id": user.id,
             "name":    user.name,
             "email":   user.email,
-            "last_seen":datetime.utcnow().isoformat(),
+            "last_seen":datetime.now(timezone.utc).isoformat(),
             "pid":os.getppid()
         }
         with open(get_session_file(), "w") as f:
@@ -125,7 +125,7 @@ def update_last_seen():
     user = get_current_user()
     if not user:
         return
-    user["last_seen"] = datetime.utcnow().isoformat()
+    user["last_seen"] = datetime.now(timezone.utc).isoformat()
     with open(get_session_file(), "w") as f:
         json.dump(user, f)
 

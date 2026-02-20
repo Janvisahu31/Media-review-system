@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from database.db import Base
@@ -18,7 +18,7 @@ class User(Base):
     name       = Column(String(100), nullable=False)
     email      = Column(String(150), unique=True, nullable=False)
     password   = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     reviews    = relationship("Review",   back_populates="user")
     favorites  = relationship("Favorite", back_populates="user")
@@ -36,7 +36,7 @@ class Media(Base):
     genre        = Column(String(100))
     release_year = Column(Integer)
     creator      = Column(String(150))   # director for movies/shows, artist for songs
-    created_at   = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     reviews      = relationship("Review",   back_populates="media")
     favorites    = relationship("Favorite", back_populates="media")
@@ -53,7 +53,7 @@ class Review(Base):
     media_id   = Column(Integer, ForeignKey("media.id"),  nullable=False)
     rating     = Column(Float,   nullable=False)           # 1.0 – 10.0
     comment    = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user       = relationship("User",  back_populates="reviews")
     media      = relationship("Media", back_populates="reviews")

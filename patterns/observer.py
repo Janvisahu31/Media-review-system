@@ -1,7 +1,7 @@
 from database.db import SessionLocal
 from database.models import Favorite, Review, Media, User
 from utils.auth import update_last_seen
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Observer:
     def notify(self, media_title: str, reviewer_name: str, rating: float, comment: str):
@@ -141,7 +141,7 @@ def get_notifications(logged_in_user_id: int, last_seen:str):
             print(" You're all caught up! No new reviews on your favorites.")
 
         update_last_seen()
-        print(f"\n📅 Last checked: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        print(f"\n📅 Last checked: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
     finally:
         db.close()
