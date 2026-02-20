@@ -880,7 +880,6 @@ pytest tests/test_auth.py -v
 - `MEDIA_TERMINAL_ID` must be set manually per terminal on Windows
 - Recommendations are genre-based only (not collaborative filtering)
 - No pagination on `--list` with 150+ media items
-- Redis caching not implemented for `--recommend`
 - No media edit or delete commands
 
 ---
